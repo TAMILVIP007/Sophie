@@ -52,7 +52,7 @@ async def welcome(message, chat, strings):
     send_id = message.chat.id
 
     if len(args := message.get_args().split()) > 0:
-        noformat = True if 'noformat' == args[0] or 'raw' == args[0] else False
+        noformat = args[0] in ['noformat', 'raw']
     else:
         noformat = None
 
@@ -425,8 +425,11 @@ async def welcome_security_handler_pm(message, strings, regexp=None, state=None,
         data['chat_id'] = chat_id
         data['msg_id'] = int(args[4])
 
-    if not message.from_user.id == int(args[3]):
-        if not (rkey := redis.get(f'welcomesecurity_users_{user_id}')) and not chat_id == rkey:
+    if message.from_user.id != int(args[3]):
+        if (
+            not (rkey := redis.get(f'welcomesecurity_users_{user_id}'))
+            and chat_id != rkey
+        ):
             await message.reply(strings['not_allowed'])  # TODO
             return
 
@@ -509,7 +512,7 @@ async def check_captcha_text(message, strings, state=None, **kwargs):
     async with state.proxy() as data:
         captcha_num = data['captcha_num']
 
-    if not int(num) == int(captcha_num):
+    if int(num) != int(captcha_num):
         await message.reply(strings['bad_num'])
         return
 
@@ -586,7 +589,7 @@ async def wc_math_check_cb(event, strings, state=None, **kwargs):
             await event.message.delete()
             return
 
-    if not num == answr:
+    if num != answr:
         await send_btn_math(event.message, state, msg_id=event.message.message_id)
         await event.answer(strings['math_wc_wrong'], show_alert=True)
         return

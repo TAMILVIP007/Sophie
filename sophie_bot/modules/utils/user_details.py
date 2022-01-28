@@ -115,13 +115,9 @@ async def get_user_link(user_id, custom_name=None, md=False):
 
 async def get_admins_rights(chat_id, force_update=True):
     key = 'admin_cache:' + str(chat_id)
-    if alist := rw[key] and not force_update:
-        pass
-    else:
-        alist = {}
+    if not (alist := rw[key] and not force_update):
         admins = await bot.get_chat_administrators(chat_id)
-        for admin in admins:
-            alist[admin['user']['id']] = {
+        alist = {admin['user']['id']: {
                 'status': admin['status'],
                 'admin': True,
                 'can_change_info': admin['can_change_info'],
@@ -130,8 +126,7 @@ async def get_admins_rights(chat_id, force_update=True):
                 'can_restrict_members': admin['can_restrict_members'],
                 'can_pin_messages': admin['can_pin_messages'],
                 'can_promote_members': admin['can_promote_members']
-            }
-
+            } for admin in admins}
         rw[key] = alist
         redis.expire(key, 900)
     return alist
@@ -146,10 +141,7 @@ async def is_user_admin(chat_id, user_id):
         return True
 
     admins = await get_admins_rights(chat_id)
-    if user_id in admins:
-        return True
-    else:
-        return False
+    return user_id in admins
 
 
 async def check_admin_rights(chat_id, user_id, rights):
@@ -181,10 +173,9 @@ async def check_group_admin(event, user_id, no_msg=False):
         chat_id = event.chat.id
     if await is_user_admin(chat_id, user_id) is True:
         return True
-    else:
-        if no_msg is False:
-            await event.reply("You should be a admin to do it!")
-        return False
+    if no_msg is False:
+        await event.reply("You should be a admin to do it!")
+    return False
 
 
 async def is_chat_creator(chat_id, user_id):
@@ -224,21 +215,20 @@ async def get_user_and_text(message, send_text=True, allow_self=False):
 
     if not user:
         # Ok, now we really be unsure, so don't return right away
-        if len(args) > 1:
-            if args[1].isdigit():
-                user = await get_user_by_id(int(args[1]))
+        if len(args) > 1 and args[1].isdigit():
+            user = await get_user_by_id(int(args[1]))
 
         if len(args) > 2:
             text = args[2]
 
-        # Not first because ex. admins can /warn (user) and reply to offended user
-        if not user and "reply_to_message" in message:
-            if len(args) > 1:
-                text = message.get_args()
-            return await get_user_by_id(message.reply_to_message.from_user.id), text
+    # Not first because ex. admins can /warn (user) and reply to offended user
+    if not user and "reply_to_message" in message:
+        if len(args) > 1:
+            text = message.get_args()
+        return await get_user_by_id(message.reply_to_message.from_user.id), text
 
-        if not user and allow_self is True:
-            user = await get_user_by_id(message.from_user.id)
+    if not user and allow_self is True:
+        user = await get_user_by_id(message.from_user.id)
 
     if not user:
         if send_text:
@@ -256,11 +246,10 @@ def get_user_and_text_dec(**dec_kwargs):
                 message = message.message
 
             user, text = await get_user_and_text(message, **dec_kwargs, send_text=False)
-            if not user:
-                await message.reply('cant_find_the_user')
-                return
-            else:
+            if user:
                 return await func(*args, user, text, **kwargs)
+            await message.reply('cant_find_the_user')
+            return
 
         return wrapped_1
 
@@ -275,11 +264,10 @@ def get_user_dec(**dec_kwargs):
                 message = message.message
 
             user, text = await get_user_and_text(message, **dec_kwargs)
-            if not user:
-                await message.reply('cant_find_the_user')
-                return
-            else:
+            if user:
                 return await func(*args, user, **kwargs)
+            await message.reply('cant_find_the_user')
+            return
 
         return wrapped_1
 

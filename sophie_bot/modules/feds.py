@@ -102,7 +102,7 @@ def get_fed_dec(func):
 
         if message.text:
             text_args = message.text.split(" ", 1)
-            if not len(text_args) < 2 and text_args[1].count('-') == 4:
+            if len(text_args) >= 2 and text_args[1].count('-') == 4:
                 if not (fed := await db.feds.find_one({'fed_id': text_args[1]})):
                     await message.reply(get_string(real_chat_id, "feds", 'fed_id_invalid'))
                     return
@@ -122,7 +122,7 @@ def is_fed_owner(func):
         fed = args[1]
         user_id = message.from_user.id
 
-        if not user_id == fed["creator"] and user_id != OWNER_ID:
+        if user_id not in [fed["creator"], OWNER_ID]:
             await message.reply(get_string(message.chat.id, "feds", 'need_fed_admin').format(name=fed['fed_name']))
             return
 
@@ -137,9 +137,11 @@ def is_fed_admin(func):
         fed = args[1]
         user_id = message.from_user.id
 
-        if not user_id == fed["creator"] and user_id != OWNER_ID:
-            if user_id not in fed['admins']:
-                await message.reply(get_string(message.chat.id, "feds", 'need_fed_admin').format(name=fed['fed_name']))
+        if (
+            user_id not in [fed["creator"], OWNER_ID]
+            and user_id not in fed['admins']
+        ):
+            await message.reply(get_string(message.chat.id, "feds", 'need_fed_admin').format(name=fed['fed_name']))
 
         return await func(*args, **kwargs)
 
@@ -161,7 +163,7 @@ async def new_fed(message, strings):
         await message.reply(strings['fed_name_long'])
         return
 
-    if await db.feds.find_one({'creator': user_id}) and not user_id == OWNER_ID:
+    if await db.feds.find_one({'creator': user_id}) and user_id != OWNER_ID:
         await message.reply(strings['can_only_1_fed'])
         return
 

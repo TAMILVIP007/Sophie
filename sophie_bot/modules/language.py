@@ -97,9 +97,7 @@ async def select_lang_callback(query, callback_data=None, **kwargs):
 
 @quart.route('/wiki/languages_loaded')
 async def languages_loaded_wiki_page():
-    text = "<h2>Loaded languages:</h2>"
-
-    text += '<ul>'
+    text = "<h2>Loaded languages:</h2>" + '<ul>'
     for language in LANGUAGES.values():
         info = language['language_info']
         text += f"\n<li>{info['flag']} {info['babel'].display_name}</li>"
